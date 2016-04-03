@@ -3,34 +3,40 @@ var pull = require('pull-stream')
 module.exports = function (manifest, opts) {
   var mockAPI = {}
 
-  function asyncMethod (cb) {
-    opts && opts.onAsync && opts.onAsync()
-    cb()
-  }
-
-  function sourceMethod () {
-    opts && opts.onSource && opts.onSource()
-    return pull.empty()
-  }
-
-  function sinkMethod () {
-    return pull.onEnd(function(){
-      opts && opts.onSink && opts.onSink()
-    })
-  }
-
-  function duplexMethod () {
-    return {
-      source: sourceMethod(),
-      sink: sinkMethod()
+  function makeMethod (name, type) {
+    if (type == 'async') {
+      return function () {
+        var args = [].slice.call(arguments)
+        var cb = args.pop()
+        opts && opts.onAsync && opts.onAsync(name, args)
+        cb()
+      }
     }
-  }
 
-  var METHODS = {
-    async: asyncMethod,
-    source: sourceMethod,
-    sink: sinkMethod,
-    duplex: duplexMethod
+    if (type == 'source') {
+      return function () {
+        var args = [].slice.call(arguments)
+        opts && opts.onSource && opts.onSource(name, args)
+        return pull.empty()
+      }
+    }
+
+    if (type == 'sink') {
+      return function () {
+        return pull.collect(function(err, data){
+          opts && opts.onSink && opts.onSink(name, err || data)
+        })
+      }
+    }
+
+    var duplexSource = makeMethod(name, 'source')
+    var duplexSink = makeMethod(name, 'sink')
+    return function () {
+      return {
+        source: duplexSource,
+        sink: duplexSink()
+      }
+    }
   }
 
   // generate mock api, by recursing through the manifest definition
@@ -40,7 +46,7 @@ module.exports = function (manifest, opts) {
       var _path = path ? path.concat(name) : [name]
       api[name] = (type && typeof type == 'object')
         ? recurse({}, type, _path)
-        : METHODS[type]
+        : makeMethod(name, type)
     })
     return api
   }

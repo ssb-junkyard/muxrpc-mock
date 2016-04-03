@@ -10,11 +10,13 @@ var MANIFEST = {
 }
 
 tape('async method', function (t) {
-  t.plan(1)
-  var api = muxmock(MANIFEST, { onAsync: function () {
-    t.ok(true)
+  t.plan(2)
+  var api = muxmock(MANIFEST, { onAsync: function (name, args) {
+    console.log(name, args)
+    t.equal(name, 'async')
+    t.equal(args[0], 'hello')
   }})
-  api.async(function (err) {
+  api.async('hello', function (err) {
     if (err)
       throw err
     t.end()
@@ -22,12 +24,13 @@ tape('async method', function (t) {
 })
 
 tape('source method', function (t) {
-  t.plan(1)
-  var api = muxmock(MANIFEST, { onSource: function () {
-    t.ok(true)
+  t.plan(2)
+  var api = muxmock(MANIFEST, { onSource: function (name, args) {
+    t.equal(name, 'source')
+    t.equal(args[0], 'hello')
   }})
   pull(
-    api.source(),
+    api.source('hello'),
     pull.onEnd(function (err) {
       if (err)
         throw err
@@ -37,29 +40,31 @@ tape('source method', function (t) {
 })
 
 tape('sink method', function (t) {
-  t.plan(1)
-  var api = muxmock(MANIFEST, { onSink: function () {
-    t.ok(true)
+  t.plan(2)
+  var api = muxmock(MANIFEST, { onSink: function (name, data) {
+    t.equal(name, 'sink')
+    t.equal(data[0], 'hello')
     t.end()
   }})
   pull(
-    pull.values([1,2,3]),
+    pull.values(['hello']),
     api.sink()
   )
 })
 
 tape('duplex method', function (t) {
-  t.plan(2)
+  t.plan(3)
   var api = muxmock(MANIFEST, { 
-    onSource: function () {
-      t.ok(true)
+    onSource: function (name) {
+      t.equal(name, 'duplex')
     },
-    onSink: function () {
-      t.ok(true)
+    onSink: function (name, data) {
+      t.equal(name, 'duplex')
+      t.equal(data[0], 'hello')
     }
   })
   pull(
-    pull.values([1,2,3]),
+    pull.values(['hello']),
     api.duplex(),
     pull.onEnd(function (err) {
       if (err)

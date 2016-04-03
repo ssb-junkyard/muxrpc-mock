@@ -22,14 +22,20 @@ You can specify functions to be called when the api methods are hit:
 
 ```js
 var api = muxmock(manifest, {
-  onAsync: function () {
+  onAsync: function (method, arguments) {
     // async method called
+    // `method` is the name of the function called
+    // `arguments` is the parameters of the call
   },
-  onSource: function () {
+  onSource: function (method, arguments) {
     // source or duplex method called
+    // `method` is the name of the function called
+    // `arguments` is the parameters of the call
   },
-  onSink: function () {
+  onSink: function (method, data) {
     // sink or duplex method called
+    // `method` is the name of the function called
+    // `data` is the collected data from the pull stream
   }
 })
 ```
